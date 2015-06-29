@@ -5,13 +5,24 @@
  * Content access install file.
  */
 
+use Drupal\user\Entity\Role;
+
 /**
- * Implements hook_uninstall().
+ * Implements hook_install().
  */
-function content_access_uninstall() {
-  foreach (node_type_get_types() as $type_name => $type) {
-    variable_del('content_access_' . $type_name);
+function content_access_install() {
+  $config = \Drupal::configFactory()->getEditable('content_access.settings');
+  $roles_gids = array();
+
+  $roles = Role::loadMultiple();
+  $i = 1;
+  foreach ($roles as $role) {
+    $roles_gids[$i] = $role->id();
+    $i++;
   }
+
+  $config->set('content_access_roles_gids', array_flip($roles_gids));
+  $config->save();
 }
 
 /**
@@ -34,21 +45,6 @@ function content_access_schema() {
     ),
     'primary key' => array('nid')
   );
-  return $schema;
-}
 
-/**
- * Convert content type settings to a new features-friendly storage format.
- */
-function content_access_update_7101() {
-  $settings = variable_get('content_access_settings', array());
-  foreach ($settings as $setting => $data) {
-    foreach ($data as $type_name => $value) {
-      $settings_new[$type_name][$setting] = $value;
-    }
-  }
-  foreach ($settings_new as $type_name => $data) {
-    variable_set('content_access_' . $type_name, $data);
-  }
-  variable_del('content_access_settings');
+  return $schema;
 }

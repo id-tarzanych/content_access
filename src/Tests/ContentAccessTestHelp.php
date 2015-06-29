@@ -2,37 +2,35 @@
 
 /**
  * @file
- * Helper class with auxiliary functions for content access module tests
+ * Contains Drupal\content_access\Tests\ContentAccessTestHelp.
  */
 
-class ContentAccessTestCase extends DrupalWebTestCase {
+namespace Drupal\content_access\Tests;
 
-  var $test_user;
-  var $rid;
-  var $admin_user;
-  var $content_type;
-  var $url_content_type_name;
-  var $node1;
-  var $node2;
+use Drupal\Core\Session\AccountInterface;
+use Drupal\node\NodeInterface;
+use Drupal\user\Entity\Role;
+use Drupal\simpletest\WebTestBase;
+
+/**
+ * Helper class with auxiliary functions for content access module tests
+ */
+class ContentAccessTestHelp extends WebTestBase {
+
+  protected $test_user;
+  protected $rid = AccountInterface::AUTHENTICATED_ROLE;
+  protected $admin_user;
+  protected $content_type;
+  protected $url_content_type_name;
+  protected $node1;
+  protected $node2;
 
   /**
    * Preparation work that is done before each test.
    * Test users, content types, nodes etc. are created.
    */
-  function setUp($module = '') {
-    if (empty($module)) {
-      // Enable content access module
-      parent::setUp('content_access');
-    }
-    else {
-      // Enable content access module plus another module
-      parent::setUp('content_access', $module);
-      // Stop setup when module could not be enabled
-      if (!module_exists($module)) {
-        $this->pass('No ' . $module . ' module present, skipping test');
-        return;
-      }
-    }
+  public function setUp() {
+    parent::setUp();
 
     // Create test user with seperate role
     $this->test_user = $this->drupalCreateUser();
@@ -41,9 +39,10 @@ class ContentAccessTestCase extends DrupalWebTestCase {
     // Needed in D7 because it's by default create two roles for new users
     // one role is Authenticated and the second is new default one
     // @see drupalCreateUser()
-    foreach ($this->test_user->roles as $rid => $role) {
-      if (!in_array($rid, array(DRUPAL_AUTHENTICATED_RID))) {
-        $this->rid = $rid;
+    $test_user_roles = $this->test_user->getRoles();
+    foreach ($test_user_roles as $role) {
+      if (!in_array($role, array(AccountInterface::AUTHENTICATED_ROLE))) {
+        $this->rid = $role;
         break;
       }
     }
@@ -63,7 +62,7 @@ class ContentAccessTestCase extends DrupalWebTestCase {
    * Change access permissions for a content type
    */
   function changeAccessContentType($access_settings) {
-    $this->drupalPost('admin/structure/types/manage/'. $this->content_type->type .'/access', $access_settings, t('Submit'));
+    $this->drupalPostForm('admin/structure/types/manage/'. $this->content_type->id() .'/access', $access_settings, t('Submit'));
     $this->assertText(t('Your changes have been saved.'), 'access rules of content type were updated successfully');
   }
 
@@ -71,16 +70,17 @@ class ContentAccessTestCase extends DrupalWebTestCase {
    * Change access permissions for a content type by a given keyword (view, update or delete)
    * for the role of the user
    */
-  function changeAccessContentTypeKeyword($keyword, $access = TRUE, $user = NULL) {
+  function changeAccessContentTypeKeyword($keyword, $access = TRUE, AccountInterface $user = NULL) {
+    $roles = array();
+
     if ($user === NULL) {
-      $user = $this->test_user;
-      $roles[$this->rid] = $user->roles[$this->rid];
+      $role = Role::load($this->rid);
+      $roles[$role->id()] = $role->id();
     } else {
-      foreach ($user->roles as $rid => $role) {
-        if (!in_array($rid, array(DRUPAL_AUTHENTICATED_RID))) {
-          $roles[$rid] = $user->roles[$rid];
-          break;
-        }
+      $user_roles = $user->getRoles();
+      foreach ($user_roles as $role) {
+        $roles[$role] = $role;
+        break;
       }
     }
 
@@ -104,9 +104,13 @@ class ContentAccessTestCase extends DrupalWebTestCase {
   /**
    * Change access permissions for a node by a given keyword (view, update or delete)
    */
-  function changeAccessNodeKeyword($node, $keyword, $access = TRUE) {
+  function changeAccessNodeKeyword(NodeInterface $node, $keyword, $access = TRUE) {
     $user = $this->test_user;
-    $roles[$this->rid] = $user->roles[$this->rid];
+    $user_roles = $user->getRoles();
+    foreach ($user_roles as $rid) {
+      $role = Role::load($rid);
+      $roles[$role->id()] = $role->get('label');
+    }
 
     $access_settings = array(
       $keyword .'['. key($roles) .']' => $access,
@@ -118,8 +122,8 @@ class ContentAccessTestCase extends DrupalWebTestCase {
   /**
    * Change access permission for a node
    */
-  function changeAccessNode($node, $access_settings) {
-    $this->drupalPost('node/'. $node->nid .'/access', $access_settings, t('Submit'));
+  function changeAccessNode(NodeInterface $node, $access_settings) {
+    $this->drupalPostForm('node/'. $node->id() .'/access', $access_settings, t('Submit'));
     $this->assertText(t('Your changes have been saved.'), 'access rules of node were updated successfully');
   }
 }
