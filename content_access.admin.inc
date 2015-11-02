@@ -4,6 +4,7 @@
  * @file Content access administration UI.
  */
 
+use Drupal\Core\Database\Database;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\Template\Attribute;
 use Drupal\user\Entity\Role;
@@ -32,20 +33,21 @@ function content_access_page_reset($form, FormStateInterface $form_state) {
  * @param $types
  *   An array of content type names.
  * @return
- *   Whether the operation has been processed successfully (TRUE) or postponed (FALSE).
+ *   Whether the operation has been processed successfully or postponed.
  */
 function content_access_mass_update($types) {
-  $q = db_select('node', 'n')
+  $query = Database::getConnection()->select('node', 'n')
     ->fields('n', array('nid'))
     ->condition('n.type', $types, 'IN');
 
-  $count = $q->countQuery()->execute()->fetchField();
+  $count = $query->countQuery()->execute()->fetchField();
 
   node_access_needs_rebuild(TRUE);
 
   // If there not too much nodes affected, try to do it.
   if ($count <= CONTENT_ACCESS_MASS_UPDATE_THRESHOLD) {
-    $records = $q->execute();
+    $records = $query->execute();
+
     foreach ($records as $node) {
       $node = Node::load($node->nid);
       \Drupal::entityManager()->getAccessControlHandler('node')->writeGrants($node);
@@ -56,8 +58,10 @@ function content_access_mass_update($types) {
     }
 
     node_access_needs_rebuild(FALSE);
+
     return TRUE;
   }
+
   return FALSE;
 }
 
@@ -77,12 +81,20 @@ function content_access_save_permissions($roles_permissions) {
  *   Array of defaults for all operations.
  */
 function content_access_role_based_form(&$form, $defaults = array(), $type = NULL) {
+  $description = [
+    t('Note that users need at least the %access_content permission to be able to deal in any way with content.', [
+      '%access_content' => t('access content'),
+    ]),
+    t('Furthermore note that content which is not @published is treated in a different way by drupal: It can be viewed only by its author or users with the %administer_nodes permission.', [
+      '@published' => t('published'),
+      '%administer_nodes' => t('administer nodes'),
+    ]),
+  ];
   $form['per_role'] = array(
     '#type' => 'fieldset',
     '#title' => t('Role based access control settings'),
     '#collapsible' => TRUE,
-    '#description' => t('Note that users need at least the %access_content permission to be able to deal in any way with content.', array('%access_content' => t('access content'))) .
-      ' ' . t('Furthermore note that content which is not @published is treated in a different way by drupal: It can be viewed only by its author or users with the %administer_nodes permission.', array('@published' => t('published'), '%administer_nodes' => t('administer nodes'))),
+    '#description' => implode(' ', $description),
   );
 
   $operations = _content_access_get_operations($type);
@@ -121,17 +133,22 @@ function content_access_force_permissions($element, FormStateInterface $form_sta
   $storage = $form_state->getStorage();
   if (!empty($storage['node'])) {
     $node = $storage['node'];
-    foreach (array('update', 'update_own', 'delete', 'delete_own') as $op) {
+    foreach (['update', 'update_own', 'delete', 'delete_own'] as $op) {
       foreach (content_access_get_settings($op, $node->getType()) as $rid) {
         $element[$op][$rid]['#disabled'] = TRUE;
         $element[$op][$rid]['#attributes']['disabled'] = 'disabled';
         $element[$op][$rid]['#value'] = TRUE;
         $element[$op][$rid]['#checked'] = TRUE;
-        $element[$op][$rid]['#prefix'] = '<span' . new Attribute(array('title' => t("Permission is granted due to the content type's access control settings."))) . '>';
+
+        $prefix_attr = new Attribute([
+          'title' => t('Permission is granted due to the content type\'s access control settings.'),
+        ]);
+        $element[$op][$rid]['#prefix'] = '<span ' . $prefix_attr . '>';
         $element[$op][$rid]['#suffix'] = "</span>";
       }
     }
   }
+
   return $element;
 }
 
@@ -148,9 +165,10 @@ function content_access_user_admin_perm_submit($form, FormStateInterface $form_s
       foreach (user_roles() as $rid => $role) {
         $values = $form_state->getValues();
         if (isset($values[$rid]) && in_array($perm, $form['checkboxes'][$rid]['#default_value']) != in_array($perm, $values[$rid])) {
-          //permission changed!
+          // permission changed.
           $types[$type] = node_type_get_names();
           continue 2;
+
         }
       }
     }
@@ -159,7 +177,7 @@ function content_access_user_admin_perm_submit($form, FormStateInterface $form_s
     drupal_set_message(\Drupal::translation()->formatPlural(count($types),
       'Permissions have been successfully rebuilt for the content type @types.',
       'Permissions have been successfully rebuilt for the content types @types.',
-      array('@types' => implode(', ', $types))
+      ['@types' => implode(', ', $types)]
     ));
   }
 }

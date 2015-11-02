@@ -14,7 +14,7 @@ use Drupal\user\PermissionHandlerInterface;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 
 /**
- * Node Access settings form
+ * Node Access settings form.
  * @package Drupal\content_access\Form
  */
 class ContentAccessAdminSettingsForm extends FormBase {
@@ -57,10 +57,9 @@ class ContentAccessAdminSettingsForm extends FormBase {
    * {@inheritdoc}
    */
   public function buildForm(array $form, FormStateInterface $form_state, $node_type = NULL) {
-
-    $storage = array(
+    $storage = [
       'node_type' => $node_type,
-    );
+    ];
 
     $form_state->setStorage($storage);
 
@@ -77,9 +76,9 @@ class ContentAccessAdminSettingsForm extends FormBase {
       '#type' => 'fieldset',
       '#title' => t('Per content node access control settings'),
       '#collapsible' => TRUE,
-      '#description' => t('Optionally you can enable per content node access control settings. If enabled, a new tab for the content access settings appears when viewing content. You have to configure permission to access these settings at the !permissions page.', array(
+      '#description' => t('Optionally you can enable per content node access control settings. If enabled, a new tab for the content access settings appears when viewing content. You have to configure permission to access these settings at the !permissions page.', [
           '!permissions' => \Drupal::l(t('permissions'), Url::fromRoute('user.admin_permissions')),
-        )
+        ]
       ),
     );
     $form['node']['per_node'] = array(
@@ -130,7 +129,7 @@ class ContentAccessAdminSettingsForm extends FormBase {
       }
     }
 
-    foreach (array('update', 'update_own', 'delete', 'delete_own') as $op) {
+    foreach (['update', 'update_own', 'delete', 'delete_own'] as $op) {
       foreach ($values[$op] as $rid => $value) {
         $permission = content_access_get_permission_by_op($op, $node_type);
         if ($value) {
@@ -168,7 +167,7 @@ class ContentAccessAdminSettingsForm extends FormBase {
         _content_access_remove_acls($node_type);
       }
 
-      if (content_access_mass_update(array($node_type))) {
+      if (content_access_mass_update([$node_type])) {
         $node_types = node_type_get_names();
         drupal_set_message(t('Permissions have been successfully rebuilt for the content type @types.', array('@types' => $node_types[$node_type])));
       }
