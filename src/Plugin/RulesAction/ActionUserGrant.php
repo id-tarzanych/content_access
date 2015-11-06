@@ -35,7 +35,7 @@ namespace Drupal\content_access\Plugin\RulesAction;
  *       required = FALSE
  *     )
  *   }
- *   deriver = "\Drupal\content_access\Plugin\RulesAction\ActionUserAclDeriver"
+ *   deriver = "\Drupal\content_access\Plugin\Deriver\RulesActionUserAclDeriver"
  * )
 
  */

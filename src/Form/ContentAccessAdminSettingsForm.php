@@ -18,6 +18,7 @@ use Symfony\Component\DependencyInjection\ContainerInterface;
  * @package Drupal\content_access\Form
  */
 class ContentAccessAdminSettingsForm extends FormBase {
+  use ContentAccessRoleBasedFormTrait;
 
   /**
    * The permission handler.
@@ -68,8 +69,8 @@ class ContentAccessAdminSettingsForm extends FormBase {
     foreach (_content_access_get_operations() as $op => $label) {
       $defaults[$op] = content_access_get_settings($op, $node_type);
     }
-    module_load_include('admin.inc', 'content_access');
-    content_access_role_based_form($form, $defaults, $node_type);
+
+    $this->roleBasedForm($form, $defaults, $node_type);
 
     // Per node:
     $form['node'] = array(
@@ -120,7 +121,7 @@ class ContentAccessAdminSettingsForm extends FormBase {
     $node_type = $storage['node_type'];
 
     // Remove disabled modules permissions, so they can't raise exception
-    // in content_access_save_permissions()
+    // in ::savePermissions().
     foreach ($roles_permissions as $rid => $role_permissions) {
       foreach ($role_permissions as $permission => $value) {
         if (!array_key_exists($permission, $permissions)) {
@@ -143,7 +144,8 @@ class ContentAccessAdminSettingsForm extends FormBase {
       // always.
       unset($values[$op]);
     }
-    content_access_save_permissions($roles_permissions);
+
+    $this->savePermissions($roles_permissions);
 
     // Update content access settings
     $settings = content_access_get_settings('all', $node_type);
@@ -175,4 +177,14 @@ class ContentAccessAdminSettingsForm extends FormBase {
 
     drupal_set_message(t('Your changes have been saved.'));
   }
+
+  /**
+   * Saves the given permissions by role to the database.
+   */
+  protected function savePermissions($roles_permissions) {
+    foreach ($roles_permissions as $rid => $permissions) {
+      user_role_change_permissions($rid, $permissions);
+    }
+  }
+
 }

@@ -2,10 +2,10 @@
 
 /**
  * @file
- * Contains \Drupal\content_access\Plugin\RulesAction\ActionUserAclDeriver.
+ * Contains \Drupal\content_access\Plugin\Deriver\RulesActionUserAclDeriver.
  */
 
-namespace Drupal\rules\Plugin\RulesAction;
+namespace Drupal\rules\Plugin\Deriver;
 
 use Drupal\Component\Plugin\Derivative\DeriverBase;
 use Drupal\Core\Extension\ModuleHandlerInterface;
@@ -17,7 +17,7 @@ use Symfony\Component\DependencyInjection\ContainerInterface;
 /**
  * Derives Content Access User plugin definitions.
  */
-class ActionUserAclDeriver extends DeriverBase implements ContainerDeriverInterface {
+class RulesActionUserAclDeriver extends DeriverBase implements ContainerDeriverInterface {
   use StringTranslationTrait;
 
   /**
@@ -28,7 +28,7 @@ class ActionUserAclDeriver extends DeriverBase implements ContainerDeriverInterf
   protected $moduleHandler;
 
   /**
-   * Creates a new ActionUserDeriver object.
+   * Creates a new RulesActionUserAclDeriver object.
    *
    * @param \Drupal\Core\Extension\ModuleHandlerInterface $module_handler
    *   The module_handler.

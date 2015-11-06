@@ -20,6 +20,7 @@ use Drupal\Core\Session\AccountInterface;
  * @package Drupal\content_access\Form
  */
 class ContentAccessPageForm extends FormBase {
+  use ContentAccessRoleBasedFormTrait;
 
   /**
    * {@inheritdoc}
@@ -38,9 +39,7 @@ class ContentAccessPageForm extends FormBase {
       $defaults[$op] = content_access_per_node_setting($op, $node);
     }
 
-    // Get roles form.
-    module_load_include('admin.inc', 'content_access');
-    content_access_role_based_form($form, $defaults, $node->getType());
+    $this->roleBasedForm($form, $defaults, $node->getType());
     foreach (Element::children($form['per_role']) as $op) {
       if (!empty($form['per_role'][$op]['#type']) && $form['per_role'][$op]['#type'] == 'checkboxes') {
         $form['per_role'][$op]['#process'] = array(
@@ -59,7 +58,7 @@ class ContentAccessPageForm extends FormBase {
     ];
     $form_state->setBuildInfo($build_info);
 
-    $form['per_role']['#after_build'] = ['content_access_force_permissions'];
+    $form['per_role']['#after_build'] = ['::forcePermissions'];
 
     // ACL form.
     if (\Drupal::moduleHandler()->moduleExists('acl')) {
@@ -93,7 +92,7 @@ class ContentAccessPageForm extends FormBase {
       '#type' => 'submit',
       '#value' => t('Reset to defaults'),
       '#weight' => 10,
-      '#submit' => ['content_access_page_reset'],
+      '#submit' => ['::pageResetSubmit'],
       '#access' => !empty(content_access_get_per_node_settings($node)),
     );
     $form['submit'] = array(
@@ -180,4 +179,43 @@ class ContentAccessPageForm extends FormBase {
 
     return $element;
   }
+
+  /**
+   * Submit callback for reset on content_access_page().
+   */
+  function pageResetSubmit(array &$form, FormStateInterface $form_state) {
+    $storage = $form_state->getStorage();
+    content_access_delete_per_node_settings($storage['node']);
+    \Drupal::entityManager()->getAccessControlHandler('node')->writeGrants($storage['node']);
+
+    drupal_set_message(t('The permissions have been reseted to the content type defaults.'));
+  }
+
+
+  /**
+   * Formapi #after_build callback, that disables checkboxes for roles without access to content.
+   */
+  function forcePermissions($element, FormStateInterface $form_state) {
+    $storage = $form_state->getStorage();
+    if (!empty($storage['node'])) {
+      $node = $storage['node'];
+      foreach (['update', 'update_own', 'delete', 'delete_own'] as $op) {
+        foreach (content_access_get_settings($op, $node->getType()) as $rid) {
+          $element[$op][$rid]['#disabled'] = TRUE;
+          $element[$op][$rid]['#attributes']['disabled'] = 'disabled';
+          $element[$op][$rid]['#value'] = TRUE;
+          $element[$op][$rid]['#checked'] = TRUE;
+
+          $prefix_attr = new Attribute([
+            'title' => t('Permission is granted due to the content type\'s access control settings.'),
+          ]);
+          $element[$op][$rid]['#prefix'] = '<span ' . $prefix_attr . '>';
+          $element[$op][$rid]['#suffix'] = "</span>";
+        }
+      }
+    }
+
+    return $element;
+  }
+
 }

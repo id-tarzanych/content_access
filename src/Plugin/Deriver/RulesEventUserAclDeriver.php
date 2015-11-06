@@ -2,10 +2,10 @@
 
 /**
  * @file
- * Contains \Drupal\content_access\Plugin\RulesEvent\UserAclDeriver.
+ * Contains \Drupal\content_access\Plugin\Deriver\RulesEventUserAclDeriver.
  */
 
-namespace Drupal\content_access\Plugin\RulesEvent;
+namespace Drupal\content_access\Plugin\Deriver;
 
 use Drupal\Component\Plugin\Derivative\DeriverBase;
 use Drupal\Core\Extension\ModuleHandlerInterface;
@@ -15,7 +15,7 @@ use Symfony\Component\DependencyInjection\ContainerInterface;
 /**
  * Derives 'User was added to ACL' plugin definition.
  */
-class UserAclDeriver extends DeriverBase implements ContainerDeriverInterface {
+class RulesEventUserAclDeriver extends DeriverBase implements ContainerDeriverInterface {
 
   /**
    * The module handler.
@@ -25,7 +25,7 @@ class UserAclDeriver extends DeriverBase implements ContainerDeriverInterface {
   protected $moduleHandler;
 
   /**
-   * Creates a new UserAclDeriver object.
+   * Creates a new RulesEventUserAclDeriver object.
    *
    * @param \Drupal\Core\Extension\ModuleHandlerInterface $module_handler
    *   The module handler.
